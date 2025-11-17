@@ -67,60 +67,30 @@ router.post('/add', async (req, res) => {
       return res.status(400).json({ success: 0, error: 'Protection must be 0 or 1' });
     }
 
-    let cartData;
+    // Calculate insurance amount
     let baseAmount;
-    let insuranceProduct;
-
-    // If frontend provides cart data or cart total, use it (avoids Storefront API call)
     if (frontendCartData) {
-      console.log('Using cart data from frontend');
-      cartData = frontendCartData;
-      baseAmount = getCartPrice(cartData);
-      insuranceProduct = findInsuranceProduct(cartData);
+      baseAmount = getCartPrice(frontendCartData);
     } else if (cartTotal !== undefined && cartTotal !== null) {
-      console.log('Using cart total from frontend:', cartTotal);
       baseAmount = parseFloat(cartTotal);
-      // Create minimal cart data structure for insurance product lookup
-      cartData = { data: { line_items: { digital_items: [] } } };
-      insuranceProduct = null;
     } else {
-      // Get cart data from API
-      console.log('Fetching cart data for cartId:', cartId);
-      cartData = await bigcommerce.getCart(cartId);
-      console.log('Cart data received:', JSON.stringify(cartData).substring(0, 200));
-      baseAmount = getCartPrice(cartData);
-      insuranceProduct = findInsuranceProduct(cartData);
+      return res.status(400).json({ success: 0, error: 'Cart total or cart data is required' });
     }
     
-    console.log('Base amount calculated:', baseAmount);
-    console.log('Insurance product found:', insuranceProduct ? insuranceProduct.id : 'none');
+    const insuranceAmount = protectionValue === 1 ? calculateInsuranceAmount(baseAmount) : 0;
+    const formattedPrice = parseFloat(insuranceAmount.toFixed(2));
+    
+    console.log('Insurance calculation:', { baseAmount, insuranceAmount: formattedPrice, protection: protectionValue });
 
-    // Remove existing insurance product if it exists
-    if (insuranceProduct) {
-      await bigcommerce.removeCartItem(cartId, insuranceProduct.id);
-    }
-
-    // Add insurance if protection is enabled
-    if (protectionValue === 1) {
-      const listPrice = calculateInsuranceAmount(baseAmount);
-      const formattedPrice = parseFloat(listPrice.toFixed(2));
-      
-      console.log('Adding insurance product:', {
-        cartId,
-        productId: config.products.insuranceProductId,
-        price: formattedPrice
-      });
-      
-      await bigcommerce.addCartItem(
-        cartId,
-        config.products.insuranceProductId,
-        1,
-        formattedPrice
-      );
-      console.log('Insurance product added successfully');
-    }
-
-    res.json({ success: 1 });
+    // Return instructions for frontend to handle cart operations
+    // Frontend will use Storefront API directly (which it already has access to)
+    res.json({ 
+      success: 1,
+      insuranceAmount: formattedPrice,
+      productId: config.products.insuranceProductId,
+      action: protectionValue === 1 ? 'add' : 'remove',
+      cartId: cartId
+    });
   } catch (error) {
     console.error('Error in /insurance/add:', error);
     const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Internal server error';
