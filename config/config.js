@@ -20,7 +20,8 @@ module.exports = {
     storeHash: process.env.BC_STORE_HASH,
     authToken: process.env.BC_AUTH_TOKEN,
     clientId: process.env.BC_CLIENT_ID,
-    apiUrl: `https://api.bigcommerce.com/stores/${process.env.BC_STORE_HASH}/v3`
+    apiUrl: `https://api.bigcommerce.com/stores/${process.env.BC_STORE_HASH}/v3`,
+    storefrontApiUrl: `https://api.bigcommerce.com/stores/${process.env.BC_STORE_HASH}/v3/storefront`
   },
   
   products: {

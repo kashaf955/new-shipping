@@ -16,27 +16,35 @@ function calculateInsuranceAmount(cartTotal) {
 
 /**
  * Get total price of physical items in cart
+ * Handles both Admin API and Storefront API response formats
  */
 function getCartPrice(cartData) {
   let listPrice = 0;
-  if (cartData.data && cartData.data.line_items && cartData.data.line_items.physical_items) {
-    cartData.data.line_items.physical_items.forEach(item => {
-      listPrice += (item.list_price * item.quantity);
-    });
-  }
+  
+  // Storefront API format: cartData.data.line_items.physical_items
+  // Admin API format: cartData.data.line_items.physical_items (same)
+  const lineItems = cartData.data?.line_items || cartData.line_items;
+  const physicalItems = lineItems?.physical_items || [];
+  
+  physicalItems.forEach(item => {
+    listPrice += (item.list_price || item.listPrice || 0) * (item.quantity || 0);
+  });
+  
   return listPrice;
 }
 
 /**
  * Find insurance product in cart
+ * Handles both Admin API and Storefront API response formats
  */
 function findInsuranceProduct(cartData) {
-  if (!cartData.data || !cartData.data.line_items || !cartData.data.line_items.digital_items) {
-    return null;
-  }
-
-  return cartData.data.line_items.digital_items.find(
-    item => item.product_id === config.products.insuranceProductId
+  // Storefront API format: cartData.data.line_items.digital_items
+  // Admin API format: cartData.data.line_items.digital_items (same)
+  const lineItems = cartData.data?.line_items || cartData.line_items;
+  const digitalItems = lineItems?.digital_items || [];
+  
+  return digitalItems.find(
+    item => (item.product_id || item.productId) === config.products.insuranceProductId
   );
 }
 

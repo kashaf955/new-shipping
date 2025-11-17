@@ -19,7 +19,7 @@ class BigCommerceService {
   }
 
   /**
-   * Get cart data by cart ID
+   * Get cart data by cart ID (using Storefront API for Storefront cart IDs)
    */
   async getCart(cartId) {
     try {
@@ -28,7 +28,10 @@ class BigCommerceService {
         throw new Error('Invalid cart ID format');
       }
       
-      const response = await axios.get(`${this.baseURL}/carts/${cartId}`, {
+      // Use Storefront API for cart operations (Storefront cart IDs are UUIDs)
+      // Storefront API endpoint: /v3/storefront/carts/{cart_id}
+      const storefrontUrl = config.bigcommerce.storefrontApiUrl || `${this.baseURL.replace('/v3', '/v3/storefront')}`;
+      const response = await axios.get(`${storefrontUrl}/carts/${cartId}`, {
         headers: this.headers
       });
       return response.data;
@@ -54,7 +57,7 @@ class BigCommerceService {
   }
 
   /**
-   * Add item to cart
+   * Add item to cart (using Storefront API for Storefront cart IDs)
    */
   async addCartItem(cartId, productId, quantity = 1, listPrice = null) {
     try {
@@ -70,8 +73,10 @@ class BigCommerceService {
         lineItem.line_items[0].list_price = parseFloat(listPrice);
       }
 
+      // Use Storefront API for cart operations
+      const storefrontUrl = config.bigcommerce.storefrontApiUrl || `${this.baseURL.replace('/v3', '/v3/storefront')}`;
       const response = await axios.post(
-        `${this.baseURL}/carts/${cartId}/items`,
+        `${storefrontUrl}/carts/${cartId}/items`,
         lineItem,
         { headers: this.headers }
       );
@@ -100,12 +105,14 @@ class BigCommerceService {
   }
 
   /**
-   * Remove item from cart
+   * Remove item from cart (using Storefront API for Storefront cart IDs)
    */
   async removeCartItem(cartId, itemId) {
     try {
+      // Use Storefront API for cart operations
+      const storefrontUrl = config.bigcommerce.storefrontApiUrl || `${this.baseURL.replace('/v3', '/v3/storefront')}`;
       const response = await axios.delete(
-        `${this.baseURL}/carts/${cartId}/items/${itemId}`,
+        `${storefrontUrl}/carts/${cartId}/items/${itemId}`,
         { headers: this.headers }
       );
       return response.data;
