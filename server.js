@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const config = require('./config/config');
 
 // Import routes
@@ -66,7 +67,8 @@ app.use('/api/insurance', insuranceRoutes);
 app.use('/api/cart', cartRoutes);
 
 // Serve static files (CSS, etc.)
-app.use('/css', express.static('public/css'));
+// Use path.join for better path resolution across platforms
+app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
