@@ -19,6 +19,7 @@ module.exports = {
   bigcommerce: {
     storeHash: process.env.BC_STORE_HASH,
     authToken: process.env.BC_AUTH_TOKEN,
+    storefrontApiToken: process.env.BC_STOREFRONT_API_TOKEN || process.env.BC_AUTH_TOKEN, // Fallback to Admin token if Storefront token not set
     clientId: process.env.BC_CLIENT_ID,
     apiUrl: `https://api.bigcommerce.com/stores/${process.env.BC_STORE_HASH}/v3`,
     storefrontApiUrl: `https://api.bigcommerce.com/stores/${process.env.BC_STORE_HASH}/v3/storefront`

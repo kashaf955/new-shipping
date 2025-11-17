@@ -4,16 +4,24 @@ const config = require('../config/config');
 class BigCommerceService {
   constructor() {
     this.baseURL = config.bigcommerce.apiUrl;
-    this.headers = {
+    this.adminHeaders = {
       'accept': 'application/json',
       'content-type': 'application/json',
       'x-auth-token': config.bigcommerce.authToken
+    };
+    
+    // Storefront API uses different authentication
+    this.storefrontHeaders = {
+      'accept': 'application/json',
+      'content-type': 'application/json',
+      'x-auth-token': config.bigcommerce.storefrontApiToken
     };
     
     // Log configuration (without sensitive data)
     console.log('BigCommerce Service initialized:', {
       baseURL: this.baseURL,
       hasAuthToken: !!config.bigcommerce.authToken,
+      hasStorefrontToken: !!config.bigcommerce.storefrontApiToken,
       storeHash: config.bigcommerce.storeHash
     });
   }
@@ -31,8 +39,9 @@ class BigCommerceService {
       // Use Storefront API for cart operations (Storefront cart IDs are UUIDs)
       // Storefront API endpoint: /v3/storefront/carts/{cart_id}
       const storefrontUrl = config.bigcommerce.storefrontApiUrl || `${this.baseURL.replace('/v3', '/v3/storefront')}`;
+      console.log('Using Storefront API URL:', storefrontUrl);
       const response = await axios.get(`${storefrontUrl}/carts/${cartId}`, {
-        headers: this.headers
+        headers: this.storefrontHeaders
       });
       return response.data;
     } catch (error) {
@@ -78,7 +87,7 @@ class BigCommerceService {
       const response = await axios.post(
         `${storefrontUrl}/carts/${cartId}/items`,
         lineItem,
-        { headers: this.headers }
+        { headers: this.storefrontHeaders }
       );
       return response.data;
     } catch (error) {
@@ -113,7 +122,7 @@ class BigCommerceService {
       const storefrontUrl = config.bigcommerce.storefrontApiUrl || `${this.baseURL.replace('/v3', '/v3/storefront')}`;
       const response = await axios.delete(
         `${storefrontUrl}/carts/${cartId}/items/${itemId}`,
-        { headers: this.headers }
+        { headers: this.storefrontHeaders }
       );
       return response.data;
     } catch (error) {

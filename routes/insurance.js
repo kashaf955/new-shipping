@@ -54,9 +54,9 @@ function findInsuranceProduct(cartData) {
  */
 router.post('/add', async (req, res) => {
   try {
-    const { cartId, protection } = req.body;
+    const { cartId, protection, cartTotal, cartData: frontendCartData } = req.body;
 
-    console.log('Insurance add request:', { cartId, protection, cartIdType: typeof cartId });
+    console.log('Insurance add request:', { cartId, protection, cartIdType: typeof cartId, hasCartTotal: !!cartTotal, hasCartData: !!frontendCartData });
 
     if (!cartId) {
       return res.status(400).json({ success: 0, error: 'Cart ID is required' });
@@ -67,13 +67,32 @@ router.post('/add', async (req, res) => {
       return res.status(400).json({ success: 0, error: 'Protection must be 0 or 1' });
     }
 
-    // Get cart data
-    console.log('Fetching cart data for cartId:', cartId);
-    const cartData = await bigcommerce.getCart(cartId);
-    console.log('Cart data received:', JSON.stringify(cartData).substring(0, 200));
-    const baseAmount = getCartPrice(cartData);
+    let cartData;
+    let baseAmount;
+    let insuranceProduct;
+
+    // If frontend provides cart data or cart total, use it (avoids Storefront API call)
+    if (frontendCartData) {
+      console.log('Using cart data from frontend');
+      cartData = frontendCartData;
+      baseAmount = getCartPrice(cartData);
+      insuranceProduct = findInsuranceProduct(cartData);
+    } else if (cartTotal !== undefined && cartTotal !== null) {
+      console.log('Using cart total from frontend:', cartTotal);
+      baseAmount = parseFloat(cartTotal);
+      // Create minimal cart data structure for insurance product lookup
+      cartData = { data: { line_items: { digital_items: [] } } };
+      insuranceProduct = null;
+    } else {
+      // Get cart data from API
+      console.log('Fetching cart data for cartId:', cartId);
+      cartData = await bigcommerce.getCart(cartId);
+      console.log('Cart data received:', JSON.stringify(cartData).substring(0, 200));
+      baseAmount = getCartPrice(cartData);
+      insuranceProduct = findInsuranceProduct(cartData);
+    }
+    
     console.log('Base amount calculated:', baseAmount);
-    const insuranceProduct = findInsuranceProduct(cartData);
     console.log('Insurance product found:', insuranceProduct ? insuranceProduct.id : 'none');
 
     // Remove existing insurance product if it exists
