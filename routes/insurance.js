@@ -15,7 +15,7 @@ function calculateInsuranceAmount(cartTotal) {
 }
 
 /**
- * Get total price of physical items in cart
+ * Get total price of physical items in cart (excluding insurance product)
  * Handles both Admin API and Storefront API response formats
  */
 function getCartPrice(cartData) {
@@ -27,7 +27,11 @@ function getCartPrice(cartData) {
   const physicalItems = lineItems?.physical_items || [];
   
   physicalItems.forEach(item => {
-    listPrice += (item.list_price || item.listPrice || 0) * (item.quantity || 0);
+    // Exclude insurance product from calculation
+    const productId = item.product_id || item.productId;
+    if (productId !== config.products.insuranceProductId) {
+      listPrice += (item.list_price || item.listPrice || 0) * (item.quantity || 0);
+    }
   });
   
   return listPrice;
@@ -67,12 +71,13 @@ router.post('/add', async (req, res) => {
       return res.status(400).json({ success: 0, error: 'Protection must be 0 or 1' });
     }
 
-    // Calculate insurance amount
+    // Calculate insurance amount - ALWAYS use cartTotal from frontend (excludes insurance)
+    // Don't recalculate from cart data as it might include insurance with wrong price
     let baseAmount;
-    if (frontendCartData) {
-      baseAmount = getCartPrice(frontendCartData);
-    } else if (cartTotal !== undefined && cartTotal !== null) {
+    if (cartTotal !== undefined && cartTotal !== null) {
       baseAmount = parseFloat(cartTotal);
+    } else if (frontendCartData) {
+      baseAmount = getCartPrice(frontendCartData);
     } else {
       return res.status(400).json({ success: 0, error: 'Cart total or cart data is required' });
     }
@@ -80,7 +85,7 @@ router.post('/add', async (req, res) => {
     const insuranceAmount = protectionValue === 1 ? calculateInsuranceAmount(baseAmount) : 0;
     const formattedPrice = parseFloat(insuranceAmount.toFixed(2));
     
-    console.log('Insurance calculation:', { baseAmount, insuranceAmount: formattedPrice, protection: protectionValue });
+    console.log('Insurance calculation:', { baseAmount, insuranceAmount: formattedPrice, protection: protectionValue, cartTotalFromFrontend: cartTotal });
 
     // Backend handles cart operations using Admin API (supports custom prices)
     if (protectionValue === 1) {
@@ -166,12 +171,12 @@ router.post('/update', async (req, res) => {
       return res.status(400).json({ success: 0, error: 'Cart ID is required' });
     }
 
-    // Calculate insurance amount from cart total
+    // Calculate insurance amount - ALWAYS use cartTotal from frontend (excludes insurance)
     let baseAmount;
-    if (frontendCartData) {
-      baseAmount = getCartPrice(frontendCartData);
-    } else if (cartTotal !== undefined && cartTotal !== null) {
+    if (cartTotal !== undefined && cartTotal !== null) {
       baseAmount = parseFloat(cartTotal);
+    } else if (frontendCartData) {
+      baseAmount = getCartPrice(frontendCartData);
     } else {
       return res.status(400).json({ success: 0, error: 'Cart total or cart data is required' });
     }
