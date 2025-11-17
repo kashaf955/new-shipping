@@ -83,9 +83,24 @@ router.post('/add', async (req, res) => {
     res.json({ success: 1 });
   } catch (error) {
     console.error('Error in /insurance/add:', error);
+    const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Internal server error';
+    const statusCode = error.response?.status || 500;
+    
+    // Log detailed error for debugging
+    console.error('Error details:', {
+      message: errorMessage,
+      status: statusCode,
+      response: error.response?.data,
+      stack: error.stack
+    });
+    
     res.status(500).json({ 
       success: 0, 
-      error: error.message || 'Internal server error' 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? {
+        status: statusCode,
+        response: error.response?.data
+      } : undefined
     });
   }
 });

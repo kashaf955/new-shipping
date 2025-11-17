@@ -16,12 +16,32 @@ class BigCommerceService {
    */
   async getCart(cartId) {
     try {
+      // Validate cartId format (should be a valid cart ID)
+      if (!cartId || typeof cartId !== 'string') {
+        throw new Error('Invalid cart ID format');
+      }
+      
       const response = await axios.get(`${this.baseURL}/carts/${cartId}`, {
         headers: this.headers
       });
       return response.data;
     } catch (error) {
-      console.error('Error fetching cart:', error.response?.data || error.message);
+      const errorDetails = error.response?.data || error.message;
+      console.error('Error fetching cart:', {
+        cartId,
+        status: error.response?.status,
+        data: errorDetails,
+        message: error.message
+      });
+      
+      // Provide more helpful error message
+      if (error.response?.status === 404) {
+        throw new Error(`Cart not found: ${cartId}`);
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
+        throw new Error('BigCommerce API authentication failed. Please check your credentials.');
+      } else if (error.response?.status) {
+        throw new Error(`BigCommerce API error: ${error.response.status} - ${JSON.stringify(errorDetails)}`);
+      }
       throw error;
     }
   }
@@ -50,7 +70,24 @@ class BigCommerceService {
       );
       return response.data;
     } catch (error) {
-      console.error('Error adding cart item:', error.response?.data || error.message);
+      const errorDetails = error.response?.data || error.message;
+      console.error('Error adding cart item:', {
+        cartId,
+        productId,
+        listPrice,
+        status: error.response?.status,
+        data: errorDetails,
+        message: error.message
+      });
+      
+      // Provide more helpful error message
+      if (error.response?.status === 404) {
+        throw new Error(`Cart or product not found. Cart: ${cartId}, Product: ${productId}`);
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
+        throw new Error('BigCommerce API authentication failed. Please check your credentials.');
+      } else if (error.response?.status) {
+        throw new Error(`BigCommerce API error: ${error.response.status} - ${JSON.stringify(errorDetails)}`);
+      }
       throw error;
     }
   }

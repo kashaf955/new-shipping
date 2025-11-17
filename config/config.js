@@ -1,5 +1,17 @@
 require('dotenv').config();
 
+// Validate required BigCommerce configuration
+function validateConfig() {
+  const required = ['BC_STORE_HASH', 'BC_AUTH_TOKEN'];
+  const missing = required.filter(key => !process.env[key]);
+  
+  if (missing.length > 0 && process.env.NODE_ENV === 'production') {
+    console.warn(`⚠️  Warning: Missing BigCommerce environment variables: ${missing.join(', ')}`);
+  }
+}
+
+validateConfig();
+
 module.exports = {
   port: process.env.PORT || 3000,
   nodeEnv: process.env.NODE_ENV || 'development',
