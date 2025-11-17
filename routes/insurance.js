@@ -48,6 +48,8 @@ router.post('/add', async (req, res) => {
   try {
     const { cartId, protection } = req.body;
 
+    console.log('Insurance add request:', { cartId, protection, cartIdType: typeof cartId });
+
     if (!cartId) {
       return res.status(400).json({ success: 0, error: 'Cart ID is required' });
     }
@@ -58,9 +60,13 @@ router.post('/add', async (req, res) => {
     }
 
     // Get cart data
+    console.log('Fetching cart data for cartId:', cartId);
     const cartData = await bigcommerce.getCart(cartId);
+    console.log('Cart data received:', JSON.stringify(cartData).substring(0, 200));
     const baseAmount = getCartPrice(cartData);
+    console.log('Base amount calculated:', baseAmount);
     const insuranceProduct = findInsuranceProduct(cartData);
+    console.log('Insurance product found:', insuranceProduct ? insuranceProduct.id : 'none');
 
     // Remove existing insurance product if it exists
     if (insuranceProduct) {
@@ -72,12 +78,19 @@ router.post('/add', async (req, res) => {
       const listPrice = calculateInsuranceAmount(baseAmount);
       const formattedPrice = parseFloat(listPrice.toFixed(2));
       
+      console.log('Adding insurance product:', {
+        cartId,
+        productId: config.products.insuranceProductId,
+        price: formattedPrice
+      });
+      
       await bigcommerce.addCartItem(
         cartId,
         config.products.insuranceProductId,
         1,
         formattedPrice
       );
+      console.log('Insurance product added successfully');
     }
 
     res.json({ success: 1 });

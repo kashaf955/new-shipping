@@ -9,6 +9,13 @@ class BigCommerceService {
       'content-type': 'application/json',
       'x-auth-token': config.bigcommerce.authToken
     };
+    
+    // Log configuration (without sensitive data)
+    console.log('BigCommerce Service initialized:', {
+      baseURL: this.baseURL,
+      hasAuthToken: !!config.bigcommerce.authToken,
+      storeHash: config.bigcommerce.storeHash
+    });
   }
 
   /**
