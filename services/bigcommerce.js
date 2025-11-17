@@ -39,8 +39,10 @@ class BigCommerceService {
       // Use Storefront API for cart operations (Storefront cart IDs are UUIDs)
       // Storefront API endpoint: /v3/storefront/carts/{cart_id}
       const storefrontUrl = config.bigcommerce.storefrontApiUrl || `${this.baseURL.replace('/v3', '/v3/storefront')}`;
-      console.log('Using Storefront API URL:', storefrontUrl);
-      const response = await axios.get(`${storefrontUrl}/carts/${cartId}`, {
+      const endpointUrl = `${storefrontUrl}/carts/${cartId}`;
+      console.log('Fetching cart from Storefront API URL:', endpointUrl);
+      console.log('Storefront API base URL:', storefrontUrl);
+      const response = await axios.get(endpointUrl, {
         headers: this.storefrontHeaders
       });
       return response.data;
@@ -70,25 +72,28 @@ class BigCommerceService {
    */
   async addCartItem(cartId, productId, quantity = 1, listPrice = null) {
     try {
+      // Storefront API uses camelCase (lineItems) not snake_case (line_items)
       const lineItem = {
-        line_items: [{
+        lineItems: [{
           quantity: quantity,
-          product_id: productId
+          productId: productId
         }]
       };
 
-      // Add list_price if provided (for insurance products)
+      // Add listPrice if provided (for insurance products) - Storefront API uses camelCase
       if (listPrice !== null) {
-        lineItem.line_items[0].list_price = parseFloat(listPrice);
+        lineItem.lineItems[0].listPrice = parseFloat(listPrice);
       }
 
       // Use Storefront API for cart operations
       const storefrontUrl = config.bigcommerce.storefrontApiUrl || `${this.baseURL.replace('/v3', '/v3/storefront')}`;
-      console.log('Storefront API URL:', `${storefrontUrl}/carts/${cartId}/items`);
-      console.log('Using token:', config.bigcommerce.storefrontApiToken ? 'Storefront token set' : 'Using Admin token (may not work)');
+      const endpointUrl = `${storefrontUrl}/carts/${cartId}/items`;
+      console.log('Storefront API URL:', endpointUrl);
+      console.log('Request body:', JSON.stringify(lineItem));
+      console.log('Using token:', config.bigcommerce.storefrontApiToken !== config.bigcommerce.authToken ? 'Storefront token' : 'Admin token (may not work)');
       
       const response = await axios.post(
-        `${storefrontUrl}/carts/${cartId}/items`,
+        endpointUrl,
         lineItem,
         { headers: this.storefrontHeaders }
       );
