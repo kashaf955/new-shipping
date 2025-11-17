@@ -27,7 +27,8 @@ class BigCommerceService {
   }
 
   /**
-   * Get cart data by cart ID (using Storefront API for Storefront cart IDs)
+   * Get cart data by cart ID
+   * Tries Storefront API first (for Storefront cart IDs), falls back to Admin API
    */
   async getCart(cartId) {
     try {
@@ -36,16 +37,25 @@ class BigCommerceService {
         throw new Error('Invalid cart ID format');
       }
       
-      // Use Storefront API for cart operations (Storefront cart IDs are UUIDs)
-      // Storefront API endpoint: /v3/storefront/carts/{cart_id}
-      const storefrontUrl = config.bigcommerce.storefrontApiUrl || `${this.baseURL.replace('/v3', '/v3/storefront')}`;
-      const endpointUrl = `${storefrontUrl}/carts/${cartId}`;
-      console.log('Fetching cart from Storefront API URL:', endpointUrl);
-      console.log('Storefront API base URL:', storefrontUrl);
-      const response = await axios.get(endpointUrl, {
-        headers: this.storefrontHeaders
-      });
-      return response.data;
+      // Try Storefront API first (for Storefront cart IDs which are UUIDs)
+      try {
+        const storefrontUrl = config.bigcommerce.storefrontApiUrl || `${this.baseURL.replace('/v3', '/v3/storefront')}`;
+        const endpointUrl = `${storefrontUrl}/carts/${cartId}`;
+        console.log('Fetching cart from Storefront API URL:', endpointUrl);
+        const response = await axios.get(endpointUrl, {
+          headers: this.storefrontHeaders
+        });
+        return response.data;
+      } catch (storefrontError) {
+        // If Storefront API fails, try Admin API
+        console.log('Storefront API failed, trying Admin API:', storefrontError.message);
+        const adminEndpointUrl = `${this.baseURL}/carts/${cartId}`;
+        console.log('Fetching cart from Admin API URL:', adminEndpointUrl);
+        const response = await axios.get(adminEndpointUrl, {
+          headers: this.adminHeaders
+        });
+        return response.data;
+      }
     } catch (error) {
       const errorDetails = error.response?.data || error.message;
       console.error('Error fetching cart:', {
@@ -68,34 +78,35 @@ class BigCommerceService {
   }
 
   /**
-   * Add item to cart (using Storefront API for Storefront cart IDs)
+   * Add item to cart with custom price
+   * Uses Admin API to support custom listPrice (Storefront API doesn't support custom prices)
    */
   async addCartItem(cartId, productId, quantity = 1, listPrice = null) {
     try {
-      // Storefront API uses camelCase (lineItems) not snake_case (line_items)
+      // Admin API uses snake_case (line_items) and supports custom list_price
       const lineItem = {
-        lineItems: [{
+        line_items: [{
           quantity: quantity,
-          productId: productId
+          product_id: productId
         }]
       };
 
-      // Add listPrice if provided (for insurance products) - Storefront API uses camelCase
+      // Add list_price if provided (for insurance products) - Admin API uses snake_case
       if (listPrice !== null) {
-        lineItem.lineItems[0].listPrice = parseFloat(listPrice);
+        lineItem.line_items[0].list_price = parseFloat(listPrice);
       }
 
-      // Use Storefront API for cart operations
-      const storefrontUrl = config.bigcommerce.storefrontApiUrl || `${this.baseURL.replace('/v3', '/v3/storefront')}`;
-      const endpointUrl = `${storefrontUrl}/carts/${cartId}/items`;
-      console.log('Storefront API URL:', endpointUrl);
+      // Use Admin API for cart operations (supports custom prices)
+      // Note: Admin API can work with Storefront cart IDs
+      const endpointUrl = `${this.baseURL}/carts/${cartId}/items`;
+      console.log('Admin API URL:', endpointUrl);
       console.log('Request body:', JSON.stringify(lineItem));
-      console.log('Using token:', config.bigcommerce.storefrontApiToken !== config.bigcommerce.authToken ? 'Storefront token' : 'Admin token (may not work)');
+      console.log('Using Admin API token for custom price support');
       
       const response = await axios.post(
         endpointUrl,
         lineItem,
-        { headers: this.storefrontHeaders }
+        { headers: this.adminHeaders }
       );
       return response.data;
     } catch (error) {
@@ -111,10 +122,9 @@ class BigCommerceService {
       
       // Provide more helpful error message
       if (error.response?.status === 404) {
-        const tokenType = config.bigcommerce.storefrontApiToken === config.bigcommerce.authToken ? 'Admin' : 'Storefront';
-        throw new Error(`Cart or product not found (404). This usually means you need a Storefront API token (BC_STOREFRONT_API_TOKEN). Currently using ${tokenType} token which cannot access Storefront API. Cart: ${cartId}, Product: ${productId}`);
+        throw new Error(`Cart or product not found (404). Cart: ${cartId}, Product: ${productId}`);
       } else if (error.response?.status === 401 || error.response?.status === 403) {
-        throw new Error('BigCommerce Storefront API authentication failed. You need a Storefront API token (BC_STOREFRONT_API_TOKEN), not an Admin API token. Admin tokens cannot access Storefront API endpoints.');
+        throw new Error('BigCommerce Admin API authentication failed. Please check your BC_AUTH_TOKEN.');
       } else if (error.response?.status) {
         throw new Error(`BigCommerce API error: ${error.response.status} - ${JSON.stringify(errorDetails)}`);
       }
@@ -123,15 +133,15 @@ class BigCommerceService {
   }
 
   /**
-   * Remove item from cart (using Storefront API for Storefront cart IDs)
+   * Remove item from cart
+   * Uses Admin API (works with both Admin and Storefront cart IDs)
    */
   async removeCartItem(cartId, itemId) {
     try {
-      // Use Storefront API for cart operations
-      const storefrontUrl = config.bigcommerce.storefrontApiUrl || `${this.baseURL.replace('/v3', '/v3/storefront')}`;
+      // Use Admin API for cart operations
       const response = await axios.delete(
-        `${storefrontUrl}/carts/${cartId}/items/${itemId}`,
-        { headers: this.storefrontHeaders }
+        `${this.baseURL}/carts/${cartId}/items/${itemId}`,
+        { headers: this.adminHeaders }
       );
       return response.data;
     } catch (error) {

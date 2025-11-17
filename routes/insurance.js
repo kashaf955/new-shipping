@@ -82,8 +82,44 @@ router.post('/add', async (req, res) => {
     
     console.log('Insurance calculation:', { baseAmount, insuranceAmount: formattedPrice, protection: protectionValue });
 
-    // Return instructions for frontend to handle cart operations
-    // Frontend will use Storefront API directly (which it already has access to)
+    // Backend handles cart operations using Admin API (supports custom prices)
+    if (protectionValue === 1) {
+      // Check if insurance already exists
+      let cartData;
+      try {
+        cartData = await bigcommerce.getCart(cartId);
+        const existingInsurance = findInsuranceProduct(cartData);
+        
+        if (existingInsurance) {
+          // Remove existing insurance first
+          await bigcommerce.removeCartItem(cartId, existingInsurance.id);
+        }
+      } catch (error) {
+        // If cart fetch fails, try to add anyway (might be a new cart)
+        console.log('Could not fetch cart, proceeding with add:', error.message);
+      }
+      
+      // Add insurance with custom price
+      await bigcommerce.addCartItem(
+        cartId,
+        config.products.insuranceProductId,
+        1,
+        formattedPrice
+      );
+    } else {
+      // Remove insurance
+      try {
+        const cartData = await bigcommerce.getCart(cartId);
+        const existingInsurance = findInsuranceProduct(cartData);
+        
+        if (existingInsurance) {
+          await bigcommerce.removeCartItem(cartId, existingInsurance.id);
+        }
+      } catch (error) {
+        console.log('Could not remove insurance (may not exist):', error.message);
+      }
+    }
+
     res.json({ 
       success: 1,
       insuranceAmount: formattedPrice,
@@ -118,46 +154,65 @@ router.post('/add', async (req, res) => {
 /**
  * POST /api/insurance/update
  * Update insurance product price based on current cart total
+ * Returns instructions for frontend to handle cart operations
  */
 router.post('/update', async (req, res) => {
   try {
-    const { cartId } = req.body;
+    const { cartId, cartTotal, cartData: frontendCartData } = req.body;
+
+    console.log('Insurance update request:', { cartId, hasCartTotal: !!cartTotal, hasCartData: !!frontendCartData });
 
     if (!cartId) {
       return res.status(400).json({ success: 0, error: 'Cart ID is required' });
     }
 
-    // Get cart data
-    let cartData = await bigcommerce.getCart(cartId);
-    const baseAmount = getCartPrice(cartData);
-    const insuranceProduct = findInsuranceProduct(cartData);
+    // Calculate insurance amount from cart total
+    let baseAmount;
+    if (frontendCartData) {
+      baseAmount = getCartPrice(frontendCartData);
+    } else if (cartTotal !== undefined && cartTotal !== null) {
+      baseAmount = parseFloat(cartTotal);
+    } else {
+      return res.status(400).json({ success: 0, error: 'Cart total or cart data is required' });
+    }
+    
+    const insuranceAmount = calculateInsuranceAmount(baseAmount);
+    const formattedPrice = parseFloat(insuranceAmount.toFixed(2));
+    
+    console.log('Insurance update calculation:', { baseAmount, insuranceAmount: formattedPrice });
 
-    if (insuranceProduct) {
-      // Remove existing insurance product
-      await bigcommerce.removeCartItem(cartId, insuranceProduct.id);
-
-      // Re-fetch cart to ensure it's updated
-      cartData = await bigcommerce.getCart(cartId);
-
-      // Check if insurance still exists (in case of multiple)
-      const remainingInsurance = findInsuranceProduct(cartData);
-      if (remainingInsurance) {
-        await bigcommerce.removeCartItem(cartId, remainingInsurance.id);
-      }
-
-      // Add insurance with updated price
-      const listPrice = calculateInsuranceAmount(baseAmount);
-      const formattedPrice = parseFloat(listPrice.toFixed(2));
+    // Backend handles cart update using Admin API (supports custom prices)
+    try {
+      const cartData = await bigcommerce.getCart(cartId);
+      const existingInsurance = findInsuranceProduct(cartData);
       
-      await bigcommerce.addCartItem(
-        cartId,
-        config.products.insuranceProductId,
-        1,
-        formattedPrice
-      );
+      if (existingInsurance) {
+        // Remove existing insurance
+        await bigcommerce.removeCartItem(cartId, existingInsurance.id);
+        
+        // Add insurance with updated price
+        await bigcommerce.addCartItem(
+          cartId,
+          config.products.insuranceProductId,
+          1,
+          formattedPrice
+        );
+      }
+    } catch (error) {
+      console.error('Error updating insurance in cart:', error);
+      return res.status(500).json({ 
+        success: 0, 
+        error: error.message || 'Failed to update insurance in cart' 
+      });
     }
 
-    res.json({ success: 1 });
+    res.json({ 
+      success: 1,
+      insuranceAmount: formattedPrice,
+      productId: config.products.insuranceProductId,
+      action: 'update',
+      cartId: cartId
+    });
   } catch (error) {
     console.error('Error in /insurance/update:', error);
     res.status(500).json({ 
