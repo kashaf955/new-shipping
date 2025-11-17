@@ -44,6 +44,7 @@ INSURANCE_PRODUCT_ID=your_insurance_product_id
 - `NODE_ENV`: Environment (development/production)
 - `BC_STORE_HASH`: Your BigCommerce store hash
 - `BC_AUTH_TOKEN`: BigCommerce Admin API auth token
+- `BC_STOREFRONT_API_TOKEN`: **REQUIRED** - BigCommerce Storefront API token (different from Admin token). Admin tokens cannot access Storefront API endpoints. Get this from: Advanced Settings → API Accounts → Create Storefront API Token
 - `BC_CLIENT_ID`: BigCommerce client ID
 - `INSURANCE_PRODUCT_ID`: Product ID for shipping protection insurance
 - `INSURANCE_PERCENTAGE_OVER_200`: Insurance percentage for orders over $200 (default: 1.5)

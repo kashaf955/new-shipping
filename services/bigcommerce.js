@@ -84,6 +84,9 @@ class BigCommerceService {
 
       // Use Storefront API for cart operations
       const storefrontUrl = config.bigcommerce.storefrontApiUrl || `${this.baseURL.replace('/v3', '/v3/storefront')}`;
+      console.log('Storefront API URL:', `${storefrontUrl}/carts/${cartId}/items`);
+      console.log('Using token:', config.bigcommerce.storefrontApiToken ? 'Storefront token set' : 'Using Admin token (may not work)');
+      
       const response = await axios.post(
         `${storefrontUrl}/carts/${cartId}/items`,
         lineItem,
@@ -103,9 +106,10 @@ class BigCommerceService {
       
       // Provide more helpful error message
       if (error.response?.status === 404) {
-        throw new Error(`Cart or product not found. Cart: ${cartId}, Product: ${productId}`);
+        const tokenType = config.bigcommerce.storefrontApiToken === config.bigcommerce.authToken ? 'Admin' : 'Storefront';
+        throw new Error(`Cart or product not found (404). This usually means you need a Storefront API token (BC_STOREFRONT_API_TOKEN). Currently using ${tokenType} token which cannot access Storefront API. Cart: ${cartId}, Product: ${productId}`);
       } else if (error.response?.status === 401 || error.response?.status === 403) {
-        throw new Error('BigCommerce API authentication failed. Please check your credentials.');
+        throw new Error('BigCommerce Storefront API authentication failed. You need a Storefront API token (BC_STOREFRONT_API_TOKEN), not an Admin API token. Admin tokens cannot access Storefront API endpoints.');
       } else if (error.response?.status) {
         throw new Error(`BigCommerce API error: ${error.response.status} - ${JSON.stringify(errorDetails)}`);
       }
