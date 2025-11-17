@@ -85,19 +85,22 @@ app.use((req, res) => {
   });
 });
 
-// Start server
-const PORT = config.port;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📦 Environment: ${config.nodeEnv}`);
-  console.log(`🏪 BigCommerce Store: ${config.bigcommerce.storeHash}`);
-  console.log(`\nAvailable endpoints:`);
-  console.log(`  GET  /health`);
-  console.log(`  POST /api/insurance/add`);
-  console.log(`  POST /api/insurance/update`);
-  console.log(`  GET  /api/insurance/calculate`);
-  console.log(`  GET  /api/cart/:cartId`);
-});
-
+// Export for Vercel serverless function
 module.exports = app;
+
+// Start server only if not in Vercel environment
+if (process.env.VERCEL !== '1') {
+  const PORT = config.port;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📦 Environment: ${config.nodeEnv}`);
+    console.log(`🏪 BigCommerce Store: ${config.bigcommerce.storeHash}`);
+    console.log(`\nAvailable endpoints:`);
+    console.log(`  GET  /health`);
+    console.log(`  POST /api/insurance/add`);
+    console.log(`  POST /api/insurance/update`);
+    console.log(`  GET  /api/insurance/calculate`);
+    console.log(`  GET  /api/cart/:cartId`);
+  });
+}
 
