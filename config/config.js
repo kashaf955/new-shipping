@@ -30,8 +30,8 @@ module.exports = {
   },
   
   insurance: {
-    percentageOver200: parseFloat(process.env.INSURANCE_PERCENTAGE_OVER_200) || 1.5,
-    percentageUnder200: parseFloat(process.env.INSURANCE_PERCENTAGE_UNDER_200) || 2
+    percentageOver200: parseFloat(process.env.INSURANCE_PERCENTAGE_OVER_200) || 4,
+    percentageUnder200: parseFloat(process.env.INSURANCE_PERCENTAGE_UNDER_200) || 4
   },
   
   cors: {
