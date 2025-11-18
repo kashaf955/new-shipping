@@ -5,12 +5,11 @@ const config = require('../config/config');
 
 /**
  * Calculate insurance amount based on cart total
+ * Always uses 4% regardless of cart total
  */
 function calculateInsuranceAmount(cartTotal) {
-  const percentage = cartTotal > 200 
-    ? config.insurance.percentageOver200 
-    : config.insurance.percentageUnder200;
-  
+  // Always use 4% as per requirements
+  const percentage = 4;
   return (cartTotal * percentage) / 100;
 }
 
@@ -245,9 +244,7 @@ router.get('/calculate', (req, res) => {
     res.json({
       cartTotal,
       insuranceAmount: formattedAmount,
-      percentage: cartTotal > 200 
-        ? config.insurance.percentageOver200 
-        : config.insurance.percentageUnder200
+      percentage: 4 // Always 4%
     });
   } catch (error) {
     console.error('Error in /insurance/calculate:', error);
